@@ -38,7 +38,7 @@ func handleClient(client net.Conn, clientid int, msgs chan Message) {
 	for {
 		in, err := reader.ReadString('\n')
 		if err != nil {
-			client.Close()
+			_ = client.Close()
 			break
 		}
 		text := fmt.Sprintf("[%d]: %s", clientid, in)
@@ -79,7 +79,7 @@ func main() {
 		case msg := <-msgs:
 			for clientID, client := range clients {
 				if msg.sender != clientID {
-					fmt.Fprintf(client, msg.message)
+					_, _ = fmt.Fprintf(client, msg.message)
 				}
 			}
 		}
