@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"net"
+	"os"
 )
 
 type Message struct {
@@ -39,6 +40,7 @@ func handleClient(client net.Conn, clientid int, msgs chan Message) {
 		in, err := reader.ReadString('\n')
 		if err != nil {
 			_ = client.Close()
+			msgs <- Message{sender: clientid, message: fmt.Sprintf("CLIENT[%d] LEFT\n", clientid)}
 			break
 		}
 		text := fmt.Sprintf("[%d]: %s", clientid, in)
@@ -48,11 +50,45 @@ func handleClient(client net.Conn, clientid int, msgs chan Message) {
 
 }
 
+func checkAvailableLog() string {
+	i := 0
+	for {
+		path := fmt.Sprintf("logs/log_%d.txt", i)
+		if checkFileExists(path) {
+			return path
+		}
+		i++
+	}
+}
+
+func checkFileExists(path string) bool {
+	_, err := os.Stat(path)
+	if os.IsNotExist(err) {
+		return true
+	} else {
+		return false
+	}
+}
+
+func createLogFile() *os.File {
+	filepath := checkAvailableLog()
+	file, err := os.Create(filepath)
+	handleError(err)
+	return file
+}
+
 func main() {
 	// Read in the network port we should listen on, from the commandline argument.
 	// Default to port 8030
 	portPtr := flag.String("port", ":8030", "port to listen on")
 	flag.Parse()
+
+	//Create log file
+	log := createLogFile()
+	defer func() {
+		err := log.Close()
+		handleError(err)
+	}()
 
 	//Create a Listener for TCP connections on the port given above.
 	ln, err := net.Listen("tcp", *portPtr)
@@ -77,6 +113,8 @@ func main() {
 			currentID++
 
 		case msg := <-msgs:
+			_, err := log.WriteString(msg.message)
+			handleError(err)
 			for clientID, client := range clients {
 				if msg.sender != clientID {
 					_, _ = fmt.Fprintf(client, msg.message)
