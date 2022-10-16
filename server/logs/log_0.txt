@@ -1,5 +1,0 @@
-[0]: test
-CLIENT[0] LEFT
-[1]: test
-[1]: test
-CLIENT[1] LEFT
